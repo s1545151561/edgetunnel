@@ -44,12 +44,13 @@ let ChatID ='';
 let proxyhosts = [];//本地代理域名池
 let proxyhostsURL = 'https://raw.githubusercontent.com/cmliu/CFcdnVmess2sub/main/proxyhosts';//在线代理域名池URL
 let RproxyIP = 'false';
+//伪装网页
 async function nginx() {
 	const text = `
 	<!DOCTYPE html>
 	<html>
 	<head>
-	<title>Welcome to nginx!</title>
+	<title>欢迎使用 nginx！</title>
 	<style>
 		body {
 			width: 35em;
@@ -59,21 +60,25 @@ async function nginx() {
 	</style>
 	</head>
 	<body>
-	<h1>Welcome to nginx!</h1>
-	<p>If you see this page, the nginx web server is successfully installed and
-	working. Further configuration is required.</p>
+	<h1>欢迎使用 nginx！</h1>
+	<p>如果你看到这个页面，说明 nginx 网页服务器已成功安装并运行。还需要进一步配置。</p>
 	
-	<p>For online documentation and support please refer to
-	<a href="http://nginx.org/">nginx.org</a>.<br/>
-	Commercial support is available at
-	<a href="http://nginx.com/">nginx.com</a>.</p>
+	<p>在线文档和支持请参阅
+	<a href="http://nginx.org/">nginx.org</a>。<br/>
+	商业支持请访问
+	<a href="http://nginx.com/">nginx.com</a>。</p>
 	
-	<p><em>Thank you for using nginx.</em></p>
+	<p><em>感谢使用 nginx。</em></p>
+
+	<br/><br/><br/>
+	
+	<p><a href="https://github.com/cmliu">项目地址</a></p>
 	</body>
 	</html>
 	`
 	return text ;
 }
+
 export default {
 	/**
 	 * @param {import("@cloudflare/workers-types").Request} request
