@@ -1249,21 +1249,6 @@ async function proxyURL(proxyURL, url) {
 function checkSUB(host) {
 	if ((!sub || sub == '') && (addresses.length + addressesapi.length + addressesnotls.length + addressesnotlsapi.length + addressescsv.length) == 0){
 		addresses = [
-			'Join.my.Telegram.channel.CMLiussss.to.unlock.more.premium.nodes.cf.090227.xyz#加入我的频道t.me/CMLiussss解锁更多优选节点',
-			'visa.cn:443',
-			'www.visa.com:8443',
-			'cis.visa.com:2053',
-			'africa.visa.com:2083',
-			'www.visa.com.sg:2087',
-			'www.visaeurope.at:2096',
-			'www.visa.com.mt:8443',
-			'qa.visamiddleeast.com',
-			'time.is',
-			'www.wto.org:8443',
-			'chatgpt.com:2087',
-			'icook.hk',
-			//'104.17.0.0#IPv4',
-			'[2606:4700::]#IPv6'
 		];
 		if (host.includes(".workers.dev")) addressesnotls = [
 			'usa.visa.com:2095',
