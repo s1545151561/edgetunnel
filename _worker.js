@@ -200,11 +200,7 @@ export default {
 				if (路径 == '/') {
 					if (env.URL302) return Response.redirect(env.URL302, 302);
 					else if (env.URL) return await proxyURL(env.URL, url);
-					else return new Response(await nginx(), {
-						headers: {
-							'Content-Type': 'text/html; charset=UTF-8',
-						},
-					});
+					else return await nginx(); // 使用 nginx() 替代 JSON 返回值
 				} else if (路径 == `/${fakeUserID}`) {
 					const fakeConfig = await getVLESSConfig(userID, request.headers.get('Host'), sub, 'CF-Workers-SUB', RproxyIP, url, env);
 					return new Response(`${fakeConfig}`, { status: 200 });
