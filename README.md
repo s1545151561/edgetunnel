@@ -7,7 +7,6 @@
 - **从入门到精通**教程：https://www.youtube.com/watch?v=oRYnrp5rQSc ***必看内容!必看内容!必看内容!!!***
 
 Telegram交流群：[@CMLiussss](https://t.me/CMLiussss)，**感谢[Alice Networks](https://url.cmliussss.com/alice)提供的云服务器维持[CM订阅转换服务](https://sub.fxxk.dedyn.io/)！**
-
 # 免责声明
 
 本免责声明适用于 GitHub 上的 “edgetunnel” 项目（以下简称“本项目”），项目链接为：https://github.com/cmliu/edgetunnel 。
