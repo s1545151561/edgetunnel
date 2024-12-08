@@ -8,7 +8,7 @@ on:
 
 jobs:
   obfuscate:
-    if: ${{ env.ENABLE_WORKFLOW == 'ENABLE_WORKFLOW' }}
+    if: ${{ env.ENABLE_WORKFLOW != 'false' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
