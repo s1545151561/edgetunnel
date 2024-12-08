@@ -8,7 +8,7 @@ on:
 
 jobs:
   obfuscate:
-    if: ${{ vars.GITHUB_ACTION_REPOSITORY == 'Shinku-Chen/edgetunnel' }}
+    if: ${{ vars.GITHUB_ACTION_REPOSITORY != 'Shinku-Chen/edgetunnel' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
