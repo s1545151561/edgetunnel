@@ -8,7 +8,7 @@ on:
 
 jobs:
   obfuscate:
-    if: github.repository == 'Shinku-Chen/edgetunnel2'
+    if: github.repository == 'cmliu/edgetunnel'
     runs-on: ubuntu-latest
     permissions:
       contents: write
