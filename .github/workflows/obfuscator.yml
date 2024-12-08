@@ -8,7 +8,7 @@ on:
 
 jobs:
   obfuscate:
-    if: ${{ env.ENABLE_WORKFLOW != 'false' }}
+    if: ${{ vars.GITHUB_ACTION_REPOSITORY == 'cmliu/edgetunnel' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
