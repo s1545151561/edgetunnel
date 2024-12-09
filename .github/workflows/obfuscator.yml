@@ -4,7 +4,6 @@ on:
     push:
         paths:
             - '修改后源码.js'
-    workflow_dispatch:
 
 jobs:
   obfuscate:
