@@ -2,8 +2,8 @@ name: Embed Code
 
 on:
   push:
-    branches:
-      - main
+      paths:
+            - '明文源码.js'
 
 jobs:
   embed-code:
