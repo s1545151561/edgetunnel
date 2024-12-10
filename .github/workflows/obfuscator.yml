@@ -1,9 +1,10 @@
 name: Obfuscate and Commit
 
 on:
-    push:
-        paths:
-            - '修改后源码.js'
+  workflow_run:
+    workflows: ["Embed Code"] # 填写修改目标文件的工作流名称
+    types:
+      - completed
 
 jobs:
   obfuscate:
