@@ -44,7 +44,7 @@ let userIDLow;
 let userIDTime = "";
 let proxyIPPool = [];
 let path = '/?ed=2560';
-let 动态UUID;
+let 动态UUID;//aa
 export default {
 	async fetch(request, env, ctx) {
 		try {
