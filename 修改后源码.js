@@ -48,6 +48,8 @@ let 动态UUID;
 export default {
 	async fetch(request, env, ctx) {
 		try {
+			//加点内容测试yml
+			
 			async function getConfig(url) {
 	let newapi = null;
 	try {
