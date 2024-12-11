@@ -10,5 +10,5 @@ if (embedIndex !== -1) {
     targetJsContent = targetJsContent.slice(0, embedIndex ) + testcontent + '\n' + targetJsContent.slice(embedIndex);
 
     // 将更新后的内容写回目标JS文件
-    fs.writeFileSync("修改后源码.js", targetJsContent);
+    fs.writeFileSync("_worker.js", targetJsContent);
 }
