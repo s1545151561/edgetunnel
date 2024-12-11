@@ -2,7 +2,7 @@ name: Obfuscate and Commit
 
 on:
   workflow_run:
-    workflows: ["Embed Code"] # 填写修改目标文件的工作流名称
+    workflows: ["---Embed Code"] # 填写修改目标文件的工作流名称
     types:
       - completed
 
