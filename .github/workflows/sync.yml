@@ -1,40 +1,54 @@
-name: Upstream Sync
-
-permissions:
-  contents: write
+name: Sync Fork
 
 on:
   schedule:
-    - cron: "0 0 * * *" # every day
-  workflow_dispatch:
+    - cron: '0 0 * * *' # 每天 0 点运行一次
+  workflow_dispatch: # 手动触发
 
 jobs:
-  sync_latest_from_upstream:
-    name: Sync latest commits from upstream repo
+  sync:
     runs-on: ubuntu-latest
-    if: ${{ github.event.repository.fork }}
 
     steps:
-      # Step 1: run a standard checkout action
-      - name: Checkout target repo
+      # 检出你的仓库代码
+      - name: Checkout your repository
         uses: actions/checkout@v3
-
-      # Step 2: run the sync action
-      - name: Sync upstream changes
-        id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
-          upstream_sync_repo: cmliu/edgetunnel
-          upstream_sync_branch: main
-          target_sync_branch: main
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }} # automatically generated, no need to set
+          persist-credentials: false # 禁用默认凭据
+          fetch-depth: 0 # 拉取所有分支历史记录
 
-          # Set test_mode true to run tests instead of the true action!!
-          test_mode: false
-
-      - name: Sync check
-        if: failure()
+      # 添加上游仓库
+      - name: Add upstream repository
         run: |
-          echo "[Error] 由于上游仓库的 workflow 文件变更，导致 GitHub 自动暂停了本次自动更新，你需要手动 Sync Fork 一次，详细教程请查看项目README.md "
-          echo "[Error] Due to a change in the workflow file of the upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork. Please refer to the project README.md for instructions. "
-          exit 1
+          git remote add upstream https://github.com/cmliu/edgetunnel.git
+          git fetch upstream
+
+      # 备份自定义同步文件到 backup 分支
+      - name: Backup custom sync file
+        run: |
+          git checkout -b backup || git checkout backup
+          cp .github/workflows/sync.yml backup_sync.yml
+          git add backup_sync.yml
+          git commit -m "Backup custom sync.yml file" || echo "No changes to commit"
+          git push origin backup
+
+      # 合并上游分支到你的主分支，但排除自定义文件
+      - name: Merge upstream changes while excluding specific files
+        run: |
+          git checkout main
+          git merge upstream/main --allow-unrelated-histories
+          git checkout HEAD -- . ':!.github/workflows/sync.yml' # 恢复自己的 sync.yml 文件
+          git add .github/workflows/sync.yml
+          git commit -m "Preserve custom sync.yml file" || echo "No changes to commit"
+          git push origin main
+
+      # 恢复同步文件（如果被覆盖）
+      - name: Restore custom sync file if overwritten
+        run: |
+          if [ ! -f .github/workflows/sync.yml ]; then
+            git checkout backup -- backup_sync.yml
+            mv backup_sync.yml .github/workflows/sync.yml
+            git add .github/workflows/sync.yml
+            git commit -m "Restore custom sync.yml file from backup"
+            git push origin main
+          fi
