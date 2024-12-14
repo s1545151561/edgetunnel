@@ -1,4 +1,4 @@
-name: Sync Fork
+name: 同步 Fork 仓库
 
 on:
   schedule:
@@ -8,47 +8,112 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     steps:
-      # 检出你的仓库代码
-      - name: Checkout your repository
+        
+      # 0. 准备工作: 获取仓库信息，确定目标分支
+      - name: 准备工作
+        run: |
+          echo "当前工作目录: $(pwd)"
+          echo "目标分支: main"
+          echo "上游仓库: https://github.com/cmliu/edgetunnel.git"
+
+      # 1. 检出当前仓库代码 (浅拷贝 main 分支)
+      - name: 检出当前仓库代码 (浅拷贝 main 分支)
         uses: actions/checkout@v3
         with:
-          persist-credentials: false # 禁用默认凭据
-          fetch-depth: 0 # 拉取所有分支历史记录
+          persist-credentials: false
+          ref: main # 只拉取 main 分支，减少初始开销
+          fetch-depth: 1 # 浅拷贝
+        
+      # 2. 备份自定义同步文件 (在同步前)
+      - name: 备份自定义同步文件
+        id: backup_sync
+        run: |
+          git checkout -b backup || git checkout backup # 创建或切换到备份分支
+          echo "已切换到 backup 分支"
+         
+          if [ -f .github/workflows/sync.yml ]; then
+              
+             if [ -f backup_sync.yml ] && cmp -s .github/workflows/sync.yml backup_sync.yml; then
+                 echo "sync.yml 文件未更改，跳过备份"
+                 echo "::set-output name=backed_up::false"
+                 exit 0;
+              fi
+              
+            cp .github/workflows/sync.yml backup_sync.yml # 复制文件
+            git add backup_sync.yml
+            git commit -m "备份自定义 sync.yml 文件" # 提交更改
+            git push origin backup # 推送更改
+            echo "已备份自定义 sync.yml 文件到 backup 分支"
+            echo "::set-output name=backed_up::true"
+          else
+            echo "sync.yml does not exist, skipping backup"
+            echo "::set-output name=backed_up::false"
+          fi
 
-      # 添加上游仓库
-      - name: Add upstream repository
+      # 3. 检出完整仓库代码 (用于同步)
+      - name: 检出完整仓库代码 (深拷贝)
+        if: steps.backup_sync.outputs.backed_up != 'false' # 如果文件被备份了就拉取所有信息
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # 4. 添加上游仓库
+      - name: 添加上游仓库
+        if: steps.backup_sync.outputs.backed_up != 'false'
         run: |
           git remote add upstream https://github.com/cmliu/edgetunnel.git
           git fetch upstream
+          echo "已添加上游仓库并拉取最新代码"
 
-      # 备份自定义同步文件到 backup 分支
-      - name: Backup custom sync file
+      # 5. 合并上游更改并保留自定义文件
+      - name: 合并上游更改并保留自定义文件
+        if: steps.backup_sync.outputs.backed_up != 'false'
         run: |
-          git checkout -b backup || git checkout backup
-          cp .github/workflows/sync.yml backup_sync.yml
-          git add backup_sync.yml
-          git commit -m "Backup custom sync.yml file" || echo "No changes to commit"
-          git push origin backup
+          git checkout main || git checkout -b main
+          echo "已切换到 main 分支"
 
-      # 合并上游分支到你的主分支，但排除自定义文件
-      - name: Merge upstream changes while excluding specific files
-        run: |
-          git checkout main
+          if ! git rev-parse --verify --quiet upstream/main; then
+            echo "上游 main 分支不存在，跳过合并"
+            exit 0
+          fi
+
           git merge upstream/main --allow-unrelated-histories
-          git checkout HEAD -- . ':!.github/workflows/sync.yml' # 恢复自己的 sync.yml 文件
-          git add .github/workflows/sync.yml
-          git commit -m "Preserve custom sync.yml file" || echo "No changes to commit"
-          git push origin main
+          echo "已合并上游 main 分支"
 
-      # 恢复同步文件（如果被覆盖）
-      - name: Restore custom sync file if overwritten
+          if ! git diff --quiet HEAD . ':!.github/workflows/sync.yml'; then
+            echo "检测到除 sync.yml 文件外的其他修改，恢复自定义 sync.yml 文件"
+            git checkout HEAD -- . ':!.github/workflows/sync.yml'
+            git add .github/workflows/sync.yml
+            git commit -m "保留自定义 sync.yml 文件"
+            echo "已保留自定义 sync.yml 文件"
+          else
+            echo "没有除 sync.yml 文件外的其他修改，跳过提交"
+          fi
+          
+          git push origin main
+          echo "已将更改推送到 origin/main"
+
+      # 6. 恢复自定义同步文件 (如果同步后不存在)
+      - name: 恢复自定义同步文件
+        if: steps.backup_sync.outputs.backed_up == 'true' # 如果文件被备份了，那么就进行恢复检查
         run: |
-          if [ ! -f .github/workflows/sync.yml ]; then
+            # 检查 sync.yml 是否存在
+            if [ -f .github/workflows/sync.yml ]; then
+                echo "sync.yml 文件存在,无需恢复"
+                exit 0
+            fi
+             # 检查 backup_sync.yml 是否存在
+            if [ ! -f backup_sync.yml ]; then
+                echo "备份文件不存在，无法恢复 sync.yml 文件"
+                exit 0
+            fi
+            
+            echo "sync.yml 文件不存在，尝试从备份恢复"
             git checkout backup -- backup_sync.yml
             mv backup_sync.yml .github/workflows/sync.yml
             git add .github/workflows/sync.yml
-            git commit -m "Restore custom sync.yml file from backup"
+            git commit -m "从备份恢复自定义 sync.yml 文件"
             git push origin main
-          fi
+            echo "已从备份恢复自定义 sync.yml 文件"
