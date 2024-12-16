@@ -44,6 +44,14 @@ jobs:
           git fetch upstream --all
         
           UPSTREAM_DEFAULT_BRANCH=$(git remote show upstream | sed -n '/HEAD branch/s/.*: //p')
+          
+          # 检查上游仓库 _worker.js 文件是否存在
+          if ! git ls-tree "upstream/${UPSTREAM_DEFAULT_BRANCH}" | grep -q "_worker.js"; then
+            echo "上游仓库 _worker.js 文件不存在，停止同步"
+            echo "::set-output name=has_changes::false"
+            exit 0
+          fi
+        
 
           CURRENT_COMMIT=$(git rev-parse HEAD)
           UPSTREAM_COMMIT=$(git rev-parse upstream/${UPSTREAM_DEFAULT_BRANCH}) # 使用上游的默认分支进行比较
@@ -79,6 +87,7 @@ jobs:
               echo "::set-output name=backed_up::true"
             else
               echo "未发现同步文件，跳过备份"
+              echo "::set-output name=backed_up::false"
               echo "::set-output name=backed_up::false"
             fi
             
