@@ -1,40 +1,144 @@
-name: Upstream Sync
-
-permissions:
-  contents: write
+name: 同步 Fork 仓库
 
 on:
   schedule:
-    - cron: "0 0 * * *" # every day
-  workflow_dispatch:
+    - cron: '0 0 * * *' # 每天 0 点运行一次
+  workflow_dispatch: # 手动触发
 
 jobs:
-  sync_latest_from_upstream:
-    name: Sync latest commits from upstream repo
+  sync:
     runs-on: ubuntu-latest
-    if: ${{ github.event.repository.fork }}
-
     steps:
-      # Step 1: run a standard checkout action
-      - name: Checkout target repo
-        uses: actions/checkout@v3
-
-      # Step 2: run the sync action
-      - name: Sync upstream changes
-        id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
-        with:
-          upstream_sync_repo: cmliu/edgetunnel
-          upstream_sync_branch: main
-          target_sync_branch: main
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }} # automatically generated, no need to set
-
-          # Set test_mode true to run tests instead of the true action!!
-          test_mode: false
-
-      - name: Sync check
-        if: failure()
+      # 0. 准备工作: 获取仓库信息，确定目标分支
+      - name: 准备工作
+        id: setup
         run: |
-          echo "[Error] 由于上游仓库的 workflow 文件变更，导致 GitHub 自动暂停了本次自动更新，你需要手动 Sync Fork 一次，详细教程请查看项目README.md "
-          echo "[Error] Due to a change in the workflow file of the upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork. Please refer to the project README.md for instructions. "
-          exit 1
+          echo "当前工作目录: $(pwd)"
+          TARGET_BRANCH="${{ github.ref_name }}"
+          TARGET_BRANCH="${TARGET_BRANCH#refs/heads/}" # remove prefix `refs/heads/`
+          echo "目标分支: ${TARGET_BRANCH}"
+          echo "上游仓库: https://github.com/cmliu/edgetunnel.git"
+          echo "::set-output name=target_branch::${TARGET_BRANCH}"
+          echo "::set-output name=event_name::${{ github.event_name }}"
+          
+      # 1. 检出当前仓库代码 (浅拷贝)
+      - name: 检出当前仓库代码 (浅拷贝)
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          ref: ${{ steps.setup.outputs.target_branch }}
+          fetch-depth: 1
+
+      # 2. 添加上游仓库并检查更新
+      - name: 添加上游仓库并检查更新
+        id: check_upstream_changes
+        run: |
+          git remote add upstream https://github.com/cmliu/edgetunnel.git || true
+          
+          if ! git fetch --dry-run upstream --all; then
+              echo "上游仓库不存在或已删除，跳过同步"
+              echo "::set-output name=has_changes::false"
+              exit 0
+          fi
+          
+          git fetch upstream --all
+        
+          UPSTREAM_DEFAULT_BRANCH=$(git remote show upstream | sed -n '/HEAD branch/s/.*: //p')
+          
+          # 检查上游仓库 _worker.js 文件是否存在
+          if ! git ls-tree "upstream/${UPSTREAM_DEFAULT_BRANCH}" | grep -q "_worker.js"; then
+            echo "上游仓库 _worker.js 文件不存在，停止同步"
+            echo "::set-output name=has_changes::false"
+            exit 0
+          fi
+        
+
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          UPSTREAM_COMMIT=$(git rev-parse upstream/${UPSTREAM_DEFAULT_BRANCH}) # 使用上游的默认分支进行比较
+
+          echo "当前仓库最新提交: $CURRENT_COMMIT"
+          echo "上游仓库最新提交: $UPSTREAM_COMMIT"
+
+          if [ "$CURRENT_COMMIT" == "$UPSTREAM_COMMIT" ]; then
+            echo "上游仓库没有新的提交，跳过同步"
+            echo "::set-output name=has_changes::false"
+            exit 0
+          else
+            echo "上游仓库有新的提交，继续同步"
+            echo "::set-output name=has_changes::true"
+          fi
+          echo "::set-output name=upstream_default_branch::${UPSTREAM_DEFAULT_BRANCH}"
+
+      # 3. 创建备份目录并复制同步文件
+      - name: 创建备份目录并复制同步文件
+        id: backup_sync_file
+        if: steps.check_upstream_changes.outputs.has_changes == 'true'
+        run: |
+            TEMP_DIR=$(mktemp -d)
+            BACKUP_DIR="$TEMP_DIR/sync_backup"
+            mkdir -p "$BACKUP_DIR"
+            SYNC_FILE=".github/workflows/sync.yml"
+            
+            if [ -f "$SYNC_FILE" ]; then
+              echo "发现同步文件，备份到 $BACKUP_DIR"
+              cp "$SYNC_FILE" "$BACKUP_DIR/"
+              echo "::set-output name=backup_dir::$BACKUP_DIR"
+              echo "::set-output name=temp_dir::$TEMP_DIR"
+              echo "::set-output name=backed_up::true"
+            else
+              echo "未发现同步文件，跳过备份"
+              echo "::set-output name=backed_up::false"
+              echo "::set-output name=backed_up::false"
+            fi
+            
+      # 4.  在备份目录中执行同步操作
+      - name: 执行备份目录中的同步
+        if: steps.backup_sync_file.outputs.backed_up == 'true'
+        working-directory: ${{ steps.backup_sync_file.outputs.backup_dir }}
+        run: |
+           echo "当前工作目录: $(pwd)"
+           SYNC_FILE="sync.yml"
+           if [ ! -f "$SYNC_FILE" ]; then
+           echo "备份目录下没有找到同步文件，请检查"
+           exit 1
+           fi
+           # 先检出当前仓库的代码
+           git clone -b ${{ steps.setup.outputs.target_branch }}  "https://${GITHUB_ACTOR}:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git"  temp_repo
+           cd temp_repo
+           
+           # 执行同步代码 (同步所有分支和 Tag)
+           git fetch --all --prune
+           if [ "${{ steps.setup.outputs.event_name }}" == "schedule" ]; then
+              
+             for branch in $(git branch -r | grep upstream/ | sed 's|upstream/||g'); do
+              echo "正在同步分支: $branch"
+              git branch --set-upstream-to=upstream/$branch $branch || true
+              git checkout -B $branch upstream/$branch --force # 强制更新本地分支
+             done
+            
+           else
+             branch="${{ steps.setup.outputs.target_branch }}"
+             echo "正在同步分支: $branch"
+             git branch --set-upstream-to=upstream/$branch $branch || true # 尝试设置上游分支，如果不存在则忽略错误
+             git checkout -B $branch upstream/$branch --force # 强制更新本地分支
+           fi
+           #同步 Tag
+           git fetch --tags upstream
+           git tag -l | xargs -I % sh -c 'git tag -f % upstream/%'
+           
+           git push --all --force origin
+           git push --tags --force origin
+           
+           cd ..
+           rm -rf temp_repo
+      # 5. 恢复同步文件
+      - name: 恢复同步文件
+        if: steps.backup_sync_file.outputs.backed_up == 'true'
+        run: |
+          TEMP_DIR="${{ steps.backup_sync_file.outputs.temp_dir }}"
+          BACKUP_DIR="${{ steps.backup_sync_file.outputs.backup_dir }}"
+          SYNC_FILE=".github/workflows/sync.yml"
+          echo "恢复同步文件"
+          cp "$BACKUP_DIR/sync.yml" "$SYNC_FILE"
+          rm -rf "$TEMP_DIR"
+          echo "已删除临时备份目录 $TEMP_DIR"
