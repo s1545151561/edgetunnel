@@ -34,6 +34,13 @@ jobs:
         id: check_upstream_changes
         run: |
           git remote add upstream https://github.com/cmliu/edgetunnel.git || true
+          
+          if ! git fetch --dry-run upstream --all; then
+              echo "上游仓库不存在或已删除，跳过同步"
+              echo "::set-output name=has_changes::false"
+              exit 0
+          fi
+          
           git fetch upstream --all
         
           UPSTREAM_DEFAULT_BRANCH=$(git remote show upstream | sed -n '/HEAD branch/s/.*: //p')
