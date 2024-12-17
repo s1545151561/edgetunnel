@@ -1,8 +1,8 @@
 
 import { connect } from 'cloudflare:sockets';
 
-let userID = '';
-let proxyIP = '';
+let userID = '810a98af-b45b-4833-8dc5-5e2b46c0a293';
+let proxyIP = 'ProxyIP.US.fxxk.dedyn.io'; // ProxyIP.SG.fxxk.dedyn.io ProxyIP.JP.fxxk.dedyn.io ProxyIP.KR.fxxk.dedyn.io cdn-all.xn--b6gac.eu.org cdn.xn--b6gac.eu.org my-telegram-is-herocore.onecf.eu.org sg.cf.zhetengsha.eu.org us.cf.zhetengsha.eu.org jp.cf.zhetengsha.eu.org bpb.yousef.isegaro.com
 let sub = '';
 let subConverter = 'SUBAPI.fxxk.dedyn.io';
 let subConfig = "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/config/ACL4SSR_Online_Mini_MultiMode.ini";
